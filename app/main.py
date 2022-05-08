@@ -1,8 +1,20 @@
 from fastapi import FastAPI
 
-app = FastAPI()
+from . import views
 
 
-@app.get('/')
-async def index():
-    return {"message": "Hello world!"}
+app = FastAPI(title='ITForDesigners')
+
+@app.on_event('startup')
+async def startup():
+    ...
+
+@app.on_event('shutdown')
+async def shutdown():
+    ...
+
+
+app.include_router(
+    views.user_router,
+    prefix='/api',
+)

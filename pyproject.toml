@@ -9,6 +9,9 @@ packages = [{include = "it_designers_backend"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = {version = "^0.76.0", extras = ["all"]}
+SQLAlchemy = "^1.4.36"
+asyncpg = "^0.25.0"
+alembic = "^1.7.7"
 
 
 [build-system]
