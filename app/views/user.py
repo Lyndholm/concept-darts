@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import User
-from ..schemas import ResponceError, UserIn, UserOut
+from ..schemas import ResponceError, UserIn, UserOut, UserUpdate
 
 router = APIRouter(
     prefix='/users',
@@ -21,8 +21,8 @@ router = APIRouter(
 async def get_all_users(db: AsyncSession = Depends(get_session)):
     """Get all users"""
 
-    result = await db.execute(select(User))
-    users = result.scalars().all()
+    query = await db.execute(select(User))
+    users = query.scalars().all()
     return [UserOut.from_orm(user) for user in users]
 
 
@@ -39,8 +39,8 @@ async def get_all_users(db: AsyncSession = Depends(get_session)):
 async def get_user(id: int, db: AsyncSession = Depends(get_session)):
     """Get user by id"""
 
-    result = await db.execute(select(User).where(User.id == id))
-    user = result.scalars().first()
+    query = await db.execute(select(User).where(User.id == id))
+    user = query.scalars().first()
 
     if not user:
         return JSONResponse(
@@ -65,6 +65,8 @@ async def get_user(id: int, db: AsyncSession = Depends(get_session)):
 async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
     """Create new user"""
 
+    # TODO: check if email is valid
+
     user = User(**body.dict())
     db.add(user)
 
@@ -81,4 +83,70 @@ async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
             }
         )
     except:
+        await db.rollback()
+
+
+@router.patch(
+    '/{id}',
+    response_model=UserOut,
+    responses={
+        404: {
+            'model': ResponceError,
+            'description': 'The user was not found'
+        },
+    }
+)
+async def update_user(id: int, body: UserUpdate, db: AsyncSession = Depends(get_session)):
+    """Update user data"""
+
+    query = await db.execute(select(User).where(User.id == id))
+
+    if not query.scalars().first():
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={'status': 404, 'error': f'user with {id=} was not found'}
+        )
+
+    try:
+        # TODO: if new password is in payload, need to hash it before storing in DB
+        statement = update(User).where(User.id == id).values(**body.dict(exclude_unset=True)).returning(User)
+        query = select(User).from_statement(statement).execution_options(populate_existing=True)
+        data = await db.execute(query)
+        await db.commit()
+
+        updated_user = data.scalars().first()
+        
+        return UserOut.from_orm(updated_user)
+
+    except Exception as e:
+        await db.rollback()
+
+
+@router.delete(
+    '/{id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {
+            'model': ResponceError,
+            'description': 'The user was not found'
+        },
+    }
+)
+async def delete_user(id: int, db: AsyncSession = Depends(get_session)):
+    """Delete user"""
+
+    query = await db.execute(select(User).where(User.id == id))
+
+    if not query.scalars().first():
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={'status': 404, 'error': f'user with {id=} was not found'}
+        )
+
+    try:
+        await db.execute(delete(User).where(User.id == id))
+        await db.commit()
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
         await db.rollback()

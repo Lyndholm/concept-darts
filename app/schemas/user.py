@@ -23,3 +23,11 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class UserUpdate(BaseModel):
+    first_name: str | None
+    last_name: str | None
+    additional_name: str | None
+    date_of_birth: date | None
+    password: str | None

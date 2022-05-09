@@ -23,3 +23,5 @@ class User(Base):
             f'email={self.email}, '
             f')>'
         )
+
+    __mapper_args__ = {'eager_defaults': True}
