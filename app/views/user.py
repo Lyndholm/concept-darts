@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import User
-from ..schemas import ResponceError, UserIn, UserOut, UserUpdate
+from ..schemas import ResponceError, UserOut, UserUpdate
+from ..utils import get_password_hash
 
 router = APIRouter(
     prefix='/users',
-    tags=['users']
+    tags=['Users']
 )
 
 
@@ -51,41 +51,6 @@ async def get_user(id: int, db: AsyncSession = Depends(get_session)):
     return UserOut.from_orm(user)
 
 
-@router.post(
-    '/',
-    response_model=UserOut,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        409: {
-            'model': ResponceError,
-            'description': 'A user with provided credentials is already registred'
-        },
-    }
-)
-async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
-    """Create new user"""
-
-    # TODO: check if email is valid
-
-    user = User(**body.dict())
-    db.add(user)
-
-    try:
-        await db.commit()
-        return UserOut.from_orm(user)
-    except IntegrityError:
-        await db.rollback()
-        return JSONResponse(
-            status_code=status.HTTP_409_CONFLICT,
-            content={
-                'status': 409,
-                'error': 'user with provided credentials is already registred'
-            }
-        )
-    except:
-        await db.rollback()
-
-
 @router.patch(
     '/{id}',
     response_model=UserOut,
@@ -108,7 +73,10 @@ async def update_user(id: int, body: UserUpdate, db: AsyncSession = Depends(get_
         )
 
     try:
-        # TODO: if new password is in payload, need to hash it before storing in DB
+        if body.password is not None:
+            hashed_password = get_password_hash(body.password)
+            body.password = hashed_password
+
         statement = update(User).where(User.id == id).values(**body.dict(exclude_unset=True)).returning(User)
         query = select(User).from_statement(statement).execution_options(populate_existing=True)
         data = await db.execute(query)
