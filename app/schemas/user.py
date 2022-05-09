@@ -1,31 +1,39 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, validator
 
 
-class UserIn(BaseModel):
+class BaseUser(BaseModel):
     first_name: str
     last_name: str
     additional_name: str | None = None
     date_of_birth: date
-    email: str
+
+
+class UserWithPassword(BaseModel):
     password: str
+    
+    @validator('password')
+    def validate_password(cls, value):
+        if len(value) < 8:
+            raise ValueError('password should be at least 8 characters long')
+        return value
 
 
-class UserOut(BaseModel):
-    id: str
-    first_name: str
-    last_name: str
-    additional_name: str | None = None
-    date_of_birth: date
-    email: str
+class UserIn(UserWithPassword, BaseUser):
+    email: EmailStr
+
+
+class UserOut(BaseUser):
+    id: int
+    email: EmailStr
     created_at: datetime
 
     class Config:
         orm_mode = True
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(UserWithPassword, BaseModel):
     first_name: str | None
     last_name: str | None
     additional_name: str | None
