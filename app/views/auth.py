@@ -5,8 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import oauth2
-from ..database import get_session
+from ..controllers import database, oauth2
 from ..models import User
 from ..schemas import ResponseError, Token, UserIn, UserOut
 from ..utils import get_password_hash, verify_password
@@ -28,7 +27,10 @@ router = APIRouter(
         },
     }
 )
-async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
+async def create_user(
+    body: UserIn,
+    db: AsyncSession = Depends(database.get_session)
+):
     """Create new user"""
 
     hashed_password = get_password_hash(body.password)
@@ -65,7 +67,7 @@ async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
 )
 async def login_user(
     credentials: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(database.get_session)
 ):
     """Login for access token"""
 

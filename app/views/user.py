@@ -3,9 +3,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_session
+from ..controllers import database, oauth2
 from ..models import User
-from ..oauth2 import get_current_user
 from ..schemas import ResponseError, UserOut, UserUpdate
 from ..utils import get_password_hash
 
@@ -26,8 +25,8 @@ router = APIRouter(
     }
 )
 async def get_mine_user(
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(database.get_session),
+    current_user: User = Depends(oauth2.get_current_user)
 ):
     """Returns the data of the authorized user"""
 
@@ -41,7 +40,9 @@ async def get_mine_user(
     '/',
     response_model=list[UserOut]
 )
-async def get_all_users(db: AsyncSession = Depends(get_session)):
+async def get_all_users(
+    db: AsyncSession = Depends(database.get_session)
+):
     """Get all users"""
 
     query = await db.execute(select(User))
@@ -59,7 +60,10 @@ async def get_all_users(db: AsyncSession = Depends(get_session)):
         },
     }
 )
-async def get_user(id: int, db: AsyncSession = Depends(get_session)):
+async def get_user(
+    id: int,
+    db: AsyncSession = Depends(database.get_session)
+):
     """Get user by id"""
 
     query = await db.execute(select(User).where(User.id == id))
@@ -84,7 +88,11 @@ async def get_user(id: int, db: AsyncSession = Depends(get_session)):
         },
     }
 )
-async def update_user(id: int, body: UserUpdate, db: AsyncSession = Depends(get_session)):
+async def update_user(
+    id: int,
+    body: UserUpdate,
+    db: AsyncSession = Depends(database.get_session)
+):
     """Update user data"""
 
     query = await db.execute(select(User).where(User.id == id))
@@ -123,7 +131,10 @@ async def update_user(id: int, body: UserUpdate, db: AsyncSession = Depends(get_
         },
     }
 )
-async def delete_user(id: int, db: AsyncSession = Depends(get_session)):
+async def delete_user(
+    id: int, 
+    db: AsyncSession = Depends(database.get_session)
+):
     """Delete user"""
 
     query = await db.execute(select(User).where(User.id == id))

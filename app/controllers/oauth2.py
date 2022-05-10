@@ -6,10 +6,10 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .config import config
+from ..config import config
 from .database import get_session
-from .models import User
-from .schemas import TokenData
+from ..models import User
+from ..schemas import TokenData
 
 SECRET_KEY = config.JWT_SECRET_KEY
 ALGORITHM = config.JWT_ALGORITHM
