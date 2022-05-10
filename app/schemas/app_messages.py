@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 
-class ResponceError(BaseModel):
+class ResponseError(BaseModel):
     status: int
     error: str

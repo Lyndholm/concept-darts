@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .. import oauth2
 from ..database import get_session
 from ..models import User
-from ..schemas import ResponceError, Token, UserIn, UserOut
+from ..schemas import ResponseError, Token, UserIn, UserOut
 from ..utils import get_password_hash, verify_password
 
 router = APIRouter(
@@ -23,7 +23,7 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     responses={
         409: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'A user with provided credentials is already registred'
         },
     }
@@ -58,7 +58,7 @@ async def create_user(body: UserIn, db: AsyncSession = Depends(get_session)):
     response_model=Token,
     responses={
         401: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'Invalid credentials'
         },
     }

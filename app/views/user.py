@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..models import User
 from ..oauth2 import get_current_user
-from ..schemas import ResponceError, UserOut, UserUpdate
+from ..schemas import ResponseError, UserOut, UserUpdate
 from ..utils import get_password_hash
 
 router = APIRouter(
@@ -20,7 +20,7 @@ router = APIRouter(
     response_model=UserOut,
     responses={
         401: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'Unauthorized'
         },
     }
@@ -54,7 +54,7 @@ async def get_all_users(db: AsyncSession = Depends(get_session)):
     response_model=UserOut,
     responses={
         404: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'The user was not found'
         },
     }
@@ -79,7 +79,7 @@ async def get_user(id: int, db: AsyncSession = Depends(get_session)):
     response_model=UserOut,
     responses={
         404: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'The user was not found'
         },
     }
@@ -118,7 +118,7 @@ async def update_user(id: int, body: UserUpdate, db: AsyncSession = Depends(get_
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         404: {
-            'model': ResponceError,
+            'model': ResponseError,
             'description': 'The user was not found'
         },
     }
