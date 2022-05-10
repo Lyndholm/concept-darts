@@ -31,7 +31,7 @@ async def create_user(
     body: UserIn,
     db: AsyncSession = Depends(database.get_session)
 ):
-    """Create new user"""
+    """Creates a new user"""
 
     hashed_password = get_password_hash(body.password)
     body.password = hashed_password

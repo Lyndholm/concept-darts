@@ -43,7 +43,7 @@ async def get_mine_user(
 async def get_all_users(
     db: AsyncSession = Depends(database.get_session)
 ):
-    """Get all users"""
+    """Returns a list of all users"""
 
     query = await db.execute(select(User))
     users = query.scalars().all()
@@ -64,7 +64,7 @@ async def get_user(
     id: int,
     db: AsyncSession = Depends(database.get_session)
 ):
-    """Get user by id"""
+    """Returns the user with the specified id"""
 
     query = await db.execute(select(User).where(User.id == id))
     user = query.scalars().first()
@@ -82,6 +82,10 @@ async def get_user(
     '/{id}',
     response_model=UserOutPrivate,
     responses={
+        403: {
+            'model': ResponseError,
+            'description': 'Forbidden to edit profile'
+        },
         404: {
             'model': ResponseError,
             'description': 'The user was not found'
@@ -91,9 +95,10 @@ async def get_user(
 async def update_user(
     id: int,
     body: UserUpdate,
-    db: AsyncSession = Depends(database.get_session)
+    db: AsyncSession = Depends(database.get_session),
+    current_user: User = Depends(oauth2.get_current_user)
 ):
-    """Update user data"""
+    """Updates the user data with the specified id"""
 
     query = await db.execute(select(User).where(User.id == id))
 
@@ -101,6 +106,12 @@ async def update_user(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={'status': 404, 'error': f'user with {id=} was not found'}
+        )
+
+    if id != current_user.id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={'status': 403, 'error': 'you can edit only your profile'}
         )
 
     try:
@@ -125,6 +136,10 @@ async def update_user(
     '/{id}',
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
+        403: {
+            'model': ResponseError,
+            'description': 'Forbidden to delete profile'
+        },
         404: {
             'model': ResponseError,
             'description': 'The user was not found'
@@ -133,9 +148,10 @@ async def update_user(
 )
 async def delete_user(
     id: int, 
-    db: AsyncSession = Depends(database.get_session)
+    db: AsyncSession = Depends(database.get_session),
+    current_user: User = Depends(oauth2.get_current_user)
 ):
-    """Delete user"""
+    """Deletes the user with the specified id"""
 
     query = await db.execute(select(User).where(User.id == id))
 
@@ -143,6 +159,12 @@ async def delete_user(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={'status': 404, 'error': f'user with {id=} was not found'}
+        )
+
+    if id != current_user.id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={'status': 403, 'error': 'you can delete only your profile'}
         )
 
     try:
