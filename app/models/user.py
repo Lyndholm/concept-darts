@@ -18,10 +18,10 @@ class User(Base):
 
     def __repr__(self) -> str:
         return (
-            f'<{self.__class__.__name__}('
-            f'id={self.id}, '
-            f'email={self.email}, '
-            f')>'
+            f'<{self.__class__.__name__}: '
+            f'id={self.id} '
+            f'email={self.email}'
+            f'>'
         )
 
     __mapper_args__ = {'eager_defaults': True}

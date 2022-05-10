@@ -15,4 +15,4 @@ async def shutdown():
 
 
 app.include_router(views.auth_router, prefix='/api')
-app.include_router(views.user_router, prefix='/api')
+app.include_router(views.users_router, prefix='/api')
