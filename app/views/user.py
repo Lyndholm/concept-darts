@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import User
+from ..oauth2 import get_current_user
 from ..schemas import ResponceError, UserOut, UserUpdate
 from ..utils import get_password_hash
 
@@ -12,6 +13,28 @@ router = APIRouter(
     prefix='/users',
     tags=['Users']
 )
+
+
+@router.get(
+    '/me',
+    response_model=UserOut,
+    responses={
+        401: {
+            'model': ResponceError,
+            'description': 'Unauthorized'
+        },
+    }
+)
+async def get_mine_user(
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns the data of the authorized user"""
+
+    query = await db.execute(select(User).where(User.id == current_user.id))
+    user = query.scalars().first()
+
+    return user
 
 
 @router.get(
