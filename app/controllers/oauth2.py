@@ -6,10 +6,10 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import models
 from ..config import config
-from .database import get_session
-from ..models import User
 from ..schemas import TokenData
+from .database import get_session
 
 SECRET_KEY = config.JWT_SECRET_KEY
 ALGORITHM = config.JWT_ALGORITHM
@@ -53,7 +53,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     )
 
     token = verify_access_token(token, credentials_exception) 
-    query = await db.execute(select(User).where(User.id == token.id))
+    query = await db.execute(select(models.User).where(models.User.id == token.id))
     user = query.scalars().first()
 
     return user
