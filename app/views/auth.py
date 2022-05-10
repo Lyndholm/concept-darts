@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
 from ..models import User
-from ..schemas import ResponseError, Token, UserIn, UserOut
+from ..schemas import ResponseError, Token, UserIn, UserOutPrivate
 from ..utils import get_password_hash, verify_password
 
 router = APIRouter(
@@ -18,7 +18,7 @@ router = APIRouter(
 
 @router.post(
     '/register',
-    response_model=UserOut,
+    response_model=UserOutPrivate,
     status_code=status.HTTP_201_CREATED,
     responses={
         409: {
@@ -41,7 +41,7 @@ async def create_user(
 
     try:
         await db.commit()
-        return UserOut.from_orm(user)
+        return UserOutPrivate.from_orm(user)
     except IntegrityError:
         await db.rollback()
         return JSONResponse(

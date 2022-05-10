@@ -24,7 +24,7 @@ class UserIn(UserWithPassword, BaseUser):
     email: EmailStr
 
 
-class UserOut(BaseUser):
+class UserOutPrivate(BaseUser):
     id: int
     email: EmailStr
     created_at: datetime
@@ -35,6 +35,7 @@ class UserOut(BaseUser):
 
 class UserOutPublic(BaseUser):
     id: int
+    created_at: datetime
 
     class Config:
         orm_mode = True

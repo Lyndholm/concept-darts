@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
 from ..models import User
-from ..schemas import ResponseError, UserOut, UserUpdate
+from ..schemas import ResponseError, UserOutPrivate, UserUpdate, UserOutPublic
 from ..utils import get_password_hash
 
 router = APIRouter(
@@ -16,7 +16,7 @@ router = APIRouter(
 
 @router.get(
     '/me',
-    response_model=UserOut,
+    response_model=UserOutPrivate,
     responses={
         401: {
             'model': ResponseError,
@@ -38,7 +38,7 @@ async def get_mine_user(
 
 @router.get(
     '/',
-    response_model=list[UserOut]
+    response_model=list[UserOutPublic]
 )
 async def get_all_users(
     db: AsyncSession = Depends(database.get_session)
@@ -47,12 +47,12 @@ async def get_all_users(
 
     query = await db.execute(select(User))
     users = query.scalars().all()
-    return [UserOut.from_orm(user) for user in users]
+    return [UserOutPublic.from_orm(user) for user in users]
 
 
 @router.get(
     '/{id}',
-    response_model=UserOut,
+    response_model=UserOutPublic,
     responses={
         404: {
             'model': ResponseError,
@@ -75,12 +75,12 @@ async def get_user(
             content={'status': 404, 'error': f'user with {id=} was not found'}
         )
 
-    return UserOut.from_orm(user)
+    return UserOutPublic.from_orm(user)
 
 
 @router.patch(
     '/{id}',
-    response_model=UserOut,
+    response_model=UserOutPrivate,
     responses={
         404: {
             'model': ResponseError,
@@ -115,7 +115,7 @@ async def update_user(
 
         updated_user = data.scalars().first()
         
-        return UserOut.from_orm(updated_user)
+        return UserOutPrivate.from_orm(updated_user)
 
     except Exception as e:
         await db.rollback()
