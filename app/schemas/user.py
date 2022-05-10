@@ -33,6 +33,13 @@ class UserOut(BaseUser):
         orm_mode = True
 
 
+class UserOutPublic(BaseUser):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
 class UserUpdate(UserWithPassword, BaseModel):
     first_name: str | None
     last_name: str | None
