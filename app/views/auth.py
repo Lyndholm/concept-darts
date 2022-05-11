@@ -25,6 +25,10 @@ router = APIRouter(
             'model': ResponseError,
             'description': 'A user with provided credentials is already registred'
         },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
+        },
     }
 )
 async def create_user(
@@ -51,8 +55,15 @@ async def create_user(
                 'error': 'user with provided credentials is already registred'
             }
         )
-    except:
+    except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
 
 
 @router.post(

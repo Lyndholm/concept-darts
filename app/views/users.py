@@ -90,6 +90,10 @@ async def get_user(
             'model': ResponseError,
             'description': 'The user was not found'
         },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
+        },
     }
 )
 async def update_user(
@@ -130,6 +134,13 @@ async def update_user(
 
     except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
 
 
 @router.delete(
@@ -143,6 +154,10 @@ async def update_user(
         404: {
             'model': ResponseError,
             'description': 'The user was not found'
+        },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
         },
     }
 )
@@ -174,3 +189,10 @@ async def delete_user(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )

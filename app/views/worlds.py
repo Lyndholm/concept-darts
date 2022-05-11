@@ -66,6 +66,10 @@ async def get_world(
             'model': ResponseError,
             'description': 'Unauthorized'
         },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
+        },
     }
 )
 async def create_world(
@@ -84,8 +88,15 @@ async def create_world(
     try:
         await db.commit()
         return WorldOut.from_orm(world)
-    except:
+    except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
 
 
 @router.patch(
@@ -107,6 +118,10 @@ async def create_world(
         424: {
             'model': ResponseError,
             'description': 'The world does not have a creator, action can not be done'
+        },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
         },
     }
 )
@@ -160,8 +175,15 @@ async def update_world(
         updated_world = data.scalars().first()
         
         return WorldOut.from_orm(updated_world)
-    except:
+    except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
 
 
 @router.delete(
@@ -179,6 +201,10 @@ async def update_world(
         424: {
             'model': ResponseError,
             'description': 'The world does not have a creator, action can not be done'
+        },
+        500: {
+            'model': ResponseError,
+            'description': 'Internal server error'
         },
     }
 )
@@ -217,3 +243,10 @@ async def delete_world(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
