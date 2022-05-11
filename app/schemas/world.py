@@ -31,4 +31,4 @@ class WorldUpdate(BaseModel):
     description: str | None
     cover_image: str | None
     map_image: str | None
-    creator_id: int | None
+    creator_id: UUID | None

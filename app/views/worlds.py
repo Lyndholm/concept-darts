@@ -177,7 +177,7 @@ async def update_world(
             if not user:
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    content={'status': 400, 'error': f'user with id={body.creator_id} does not exist'}
+                    content={'status': 400, 'error': f'user with id={body.creator_id!s} does not exist'}
                 )
 
         statement = update(World).where(World.id == id).values(**body.dict(exclude_unset=True)).returning(World)

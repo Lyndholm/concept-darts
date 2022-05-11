@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, validator
 
@@ -25,7 +26,7 @@ class UserIn(UserWithPassword, BaseUser):
 
 
 class UserOutPrivate(BaseUser):
-    id: int
+    id: UUID
     email: EmailStr
     created_at: datetime
 
@@ -34,7 +35,7 @@ class UserOutPrivate(BaseUser):
 
 
 class UserOutPublic(BaseUser):
-    id: int
+    id: UUID
     created_at: datetime
 
     class Config:

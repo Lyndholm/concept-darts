@@ -1,4 +1,7 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, DATE
+import uuid
+
+from sqlalchemy import DATE, TIMESTAMP, Column, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql.expression import text
 
 from ..controllers.database import Base
@@ -7,7 +10,7 @@ from ..controllers.database import Base
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     additional_name = Column(String)
@@ -19,7 +22,7 @@ class User(Base):
     def __repr__(self) -> str:
         return (
             f'<{self.__class__.__name__}: '
-            f'id={self.id} '
+            f'id={self.id!s} '
             f'email={self.email}'
             f'>'
         )

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, or_, select, update
@@ -5,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
 from ..models import User
-from ..schemas import ResponseError, UserOutPrivate, UserUpdate, UserOutPublic
+from ..schemas import ResponseError, UserOutPrivate, UserOutPublic, UserUpdate
 from ..utils import get_password_hash
 
 router = APIRouter(
@@ -30,8 +32,18 @@ async def get_mine_user(
 ):
     """Returns the data of the authorized user"""
 
-    query = await db.execute(select(User).where(User.id == current_user.id))
-    user = query.scalars().first()
+    # There is a bug which leads to AttributeError.
+    # It may happen when user deletes their account
+    # and then tries to request this endpoint
+    try:
+        query = await db.execute(select(User).where(User.id == current_user.id))
+        user = query.scalars().first()
+    except AttributeError:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={'status': 401, 'error': 'invalid credentials'},
+            headers={'WWW-Authenticate': 'Bearer'}
+        )
 
     return user
 
@@ -75,7 +87,7 @@ async def get_all_users(
     }
 )
 async def get_user(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(database.get_session)
 ):
     """Returns the user with the specified id"""
@@ -86,7 +98,7 @@ async def get_user(
     if not user:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'user with {id=} was not found'}
+            content={'status': 404, 'error': f'user with id={id!s} was not found'}
         )
 
     return UserOutPublic.from_orm(user)
@@ -111,7 +123,7 @@ async def get_user(
     }
 )
 async def update_user(
-    id: int,
+    id: UUID,
     body: UserUpdate,
     db: AsyncSession = Depends(database.get_session),
     current_user: User = Depends(oauth2.get_current_user)
@@ -123,7 +135,7 @@ async def update_user(
     if not query.scalars().first():
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'user with {id=} was not found'}
+            content={'status': 404, 'error': f'user with id={id!s} was not found'}
         )
 
     if id != current_user.id:
@@ -176,7 +188,7 @@ async def update_user(
     }
 )
 async def delete_user(
-    id: int, 
+    id: UUID, 
     db: AsyncSession = Depends(database.get_session),
     current_user: User = Depends(oauth2.get_current_user)
 ):
@@ -187,7 +199,7 @@ async def delete_user(
     if not query.scalars().first():
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'user with {id=} was not found'}
+            content={'status': 404, 'error': f'user with id={id!s} was not found'}
         )
 
     if id != current_user.id:
