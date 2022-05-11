@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
@@ -41,11 +41,25 @@ async def get_mine_user(
     response_model=list[UserOutPublic]
 )
 async def get_all_users(
-    db: AsyncSession = Depends(database.get_session)
+    db: AsyncSession = Depends(database.get_session),
+    search: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ):
     """Returns a list of all users"""
 
-    query = await db.execute(select(User))
+    search = search if search else ''
+    query = await db.execute(
+        select(User).
+        where(or_(
+            User.first_name.contains(search),
+            User.last_name.contains(search),
+            User.additional_name.contains(search)
+            )
+        ).
+        limit(limit).
+        offset(offset)
+    )
     users = query.scalars().all()
     return [UserOutPublic.from_orm(user) for user in users]
 

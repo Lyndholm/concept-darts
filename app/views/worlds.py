@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
@@ -20,11 +20,24 @@ router = APIRouter(
     response_model=list[WorldOut]
 )
 async def get_all_worlds(
-    db: AsyncSession = Depends(database.get_session)
+    db: AsyncSession = Depends(database.get_session),
+    search: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ):
     """Returns a list of all worlds"""
 
-    query = await db.execute(select(World))
+    search = search if search else ''
+    query = await db.execute(
+        select(World).
+        where(or_(
+            World.name.contains(search),
+            World.description.contains(search)
+            )
+        ).
+        limit(limit).
+        offset(offset)
+    )
     worlds = query.scalars().all()
     return [WorldOut.from_orm(world) for world in worlds]
 
