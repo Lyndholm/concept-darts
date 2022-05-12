@@ -9,6 +9,7 @@ class BaseUser(BaseModel):
     last_name: str
     additional_name: str | None = None
     date_of_birth: date
+    avatar_image: str | None
 
 
 class UserWithPassword(BaseModel):
@@ -25,18 +26,16 @@ class UserIn(UserWithPassword, BaseUser):
     email: EmailStr
 
 
-class UserOutPrivate(BaseUser):
+class UserOutPublic(BaseUser):
     id: UUID
-    email: EmailStr
     created_at: datetime
 
     class Config:
         orm_mode = True
 
 
-class UserOutPublic(BaseUser):
-    id: UUID
-    created_at: datetime
+class UserOutPrivate(UserOutPublic, BaseUser):
+    email: EmailStr
 
     class Config:
         orm_mode = True
@@ -48,3 +47,4 @@ class UserUpdate(UserWithPassword, BaseModel):
     additional_name: str | None
     date_of_birth: date | None
     password: str | None
+    avatar_image: str | None

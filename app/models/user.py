@@ -17,6 +17,7 @@ class User(Base):
     date_of_birth = Column(DATE, nullable=False)
     email = Column(String, nullable=False, unique=True)
     password = Column(String, nullable=False)
+    avatar_image = Column(String)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
 
     def __repr__(self) -> str:

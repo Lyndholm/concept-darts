@@ -9,8 +9,8 @@ from .user import UserOutPublic
 class BaseWorld(BaseModel):
     name: str
     description: str | None = None
-    cover_image: str | None = None
     map_image: str
+    cover_image: str | None = None
 
 
 class WorldIn(BaseWorld):
@@ -29,6 +29,6 @@ class WorldOut(BaseWorld):
 class WorldUpdate(BaseModel):
     name: str | None
     description: str | None
-    cover_image: str | None
     map_image: str | None
+    cover_image: str | None
     creator_id: UUID | None
