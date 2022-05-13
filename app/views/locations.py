@@ -6,78 +6,82 @@ from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
-from ..models import User, World
-from ..schemas import ResponseError, WorldIn, WorldOut, WorldUpdate
+from ..models import User, Location, World
+from ..schemas import ResponseError, LocationIn, LocationOut, LocationUpdate
 
 router = APIRouter(
-    prefix='/worlds',
-    tags=['Worlds']
+    prefix='/locations',
+    tags=['Locations']
 )
 
 
 @router.get(
     '/',
-    response_model=list[WorldOut]
+    response_model=list[LocationOut]
 )
-async def get_all_worlds(
+async def get_all_locations(
     db: AsyncSession = Depends(database.get_session),
     search: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
 ):
-    """Returns a list of all worlds"""
+    """Returns a list of all locations"""
 
     search = search if search else ''
     query = await db.execute(
-        select(World).
+        select(Location).
         where(or_(
-            World.name.contains(search),
-            World.description.contains(search)
+            Location.name.contains(search),
+            Location.description.contains(search)
             )
         ).
         limit(limit).
         offset(offset)
     )
-    worlds = query.scalars().unique().all() # BUG: locations are always null
-    return [WorldOut.from_orm(world) for world in worlds]
+    locations = query.scalars().all()
+    return [LocationOut.from_orm(location) for location in locations]
 
 
 @router.get(
     '/{id}',
-    response_model=WorldOut,
+    response_model=LocationOut,
     responses={
         404: {
             'model': ResponseError,
-            'description': 'The world was not found'
+            'description': 'The location was not found'
         },
     }
 )
-async def get_world(
+async def get_location(
     id: UUID,
     db: AsyncSession = Depends(database.get_session)
 ):
-    """Returns the world with the specified id"""
+    """Returns the location with the specified id"""
 
-    query = await db.execute(select(World).where(World.id == id))
-    world = query.scalars().first()
+    query = await db.execute(select(Location).where(Location.id == id))
+    location = query.scalars().first()
 
-    if not world:
+    if not location:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'world with id={id!s} was not found'}
+            content={'status': 404, 'error': f'location with id={id!s} was not found'}
         )
 
-    return WorldOut.from_orm(world)
+    return LocationOut.from_orm(location)
 
 
 @router.post(
     '/',
-    response_model=WorldOut,
+    response_model=LocationOut,
     status_code=status.HTTP_201_CREATED,
     responses={
         401: {
             'model': ResponseError,
             'description': 'Unauthorized'
+        },
+        404: {
+            'model': ResponseError,
+            'description': 'World as a foreign key was not found'
         },
         500: {
             'model': ResponseError,
@@ -85,22 +89,31 @@ async def get_world(
         },
     }
 )
-async def create_world(
-    body: WorldIn,
+async def create_location(
+    body: LocationIn,
     db: AsyncSession = Depends(database.get_session),
     current_user: User = Depends(oauth2.get_current_user)
 ):
-    """Creates a new world"""
+    """Creates a new location"""
+
+    query = await db.execute(select(World).where(World.id == body.world_id))
+    world = query.scalars().first()
+
+    if not world:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={'status': 404, 'error': f'world with id={body.world_id!s} was not found'}
+        )
 
     body = body.dict()
     body.update({'creator_id': current_user.id})
 
-    world = World(**body)
-    db.add(world)
+    location = Location(**body)
+    db.add(location)
 
     try:
         await db.commit()
-        return WorldOut.from_orm(world)
+        return LocationOut.from_orm(location)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -114,7 +127,7 @@ async def create_world(
 
 @router.patch(
     '/{id}',
-    response_model=WorldOut,
+    response_model=LocationOut,
     responses={
         400: {
             'model': ResponseError,
@@ -126,11 +139,11 @@ async def create_world(
         },
         404: {
             'model': ResponseError,
-            'description': 'The world was not found'
+            'description': 'The location was not found'
         },
         424: {
             'model': ResponseError,
-            'description': 'The world does not have a creator, action can not be done'
+            'description': 'The location does not have a creator, action can not be done'
         },
         500: {
             'model': ResponseError,
@@ -138,35 +151,35 @@ async def create_world(
         },
     }
 )
-async def update_world(
+async def update_location(
     id: UUID,
-    body: WorldUpdate,
+    body: LocationUpdate,
     db: AsyncSession = Depends(database.get_session),
     current_user: User = Depends(oauth2.get_current_user)
 ):
-    """Updates the world data with the specified id"""
+    """Updates the location data with the specified id"""
 
     # TODO: Make the function simple, there are many lines in it
 
-    query = await db.execute(select(World).where(World.id == id))
-    world = query.scalars().first()
+    query = await db.execute(select(Location).where(Location.id == id))
+    location = query.scalars().first()
 
-    if not world:
+    if not location:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'world with id={id!s} was not found'}
+            content={'status': 404, 'error': f'location with id={id!s} was not found'}
         )
 
-    if world.creator_id is not None:
-        if world.creator_id != current_user.id:
+    if location.creator_id is not None:
+        if location.creator_id != current_user.id:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content={'status': 403, 'error': 'only world creator can edit the world'}
+                content={'status': 403, 'error': 'only location creator can edit the location'}
             )
     else:
         return JSONResponse(
             status_code=status.HTTP_424_FAILED_DEPENDENCY,
-            content={'status': 424, 'error': f'The world does not have a creator, so you can not edit it. Contact the support.'}
+            content={'status': 424, 'error': f'The location does not have a creator, so you can not edit it. Contact the support.'}
         )
 
     try:
@@ -180,14 +193,14 @@ async def update_world(
                     content={'status': 400, 'error': f'user with id={body.creator_id!s} does not exist'}
                 )
 
-        statement = update(World).where(World.id == id).values(**body.dict(exclude_unset=True)).returning(World)
-        query = select(World).from_statement(statement).execution_options(populate_existing=True)
+        statement = update(Location).where(Location.id == id).values(**body.dict(exclude_unset=True)).returning(Location)
+        query = select(Location).from_statement(statement).execution_options(populate_existing=True)
         data = await db.execute(query)
         await db.commit()
 
-        updated_world = data.scalars().first()
+        updated_location = data.scalars().first()
         
-        return WorldOut.from_orm(updated_world)
+        return LocationOut.from_orm(updated_location)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -209,11 +222,11 @@ async def update_world(
         },
         404: {
             'model': ResponseError,
-            'description': 'The world was not found'
+            'description': 'The location was not found'
         },
         424: {
             'model': ResponseError,
-            'description': 'The world does not have a creator, action can not be done'
+            'description': 'The location does not have a creator, action can not be done'
         },
         500: {
             'model': ResponseError,
@@ -221,36 +234,36 @@ async def update_world(
         },
     }
 )
-async def delete_world(
+async def delete_location(
     id: UUID, 
     db: AsyncSession = Depends(database.get_session),
     current_user: User = Depends(oauth2.get_current_user)
 ):
-    """Deletes the world with the specified id"""
+    """Deletes the location with the specified id"""
 
-    query = await db.execute(select(World).where(World.id == id))
-    world = query.scalars().first()
+    query = await db.execute(select(Location).where(Location.id == id))
+    location = query.scalars().first()
 
-    if not world:
+    if not location:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'world with id={id!s} was not found'}
+            content={'status': 404, 'error': f'location with id={id!s} was not found'}
         )
 
-    if world.creator_id is not None:
-        if world.creator_id != current_user.id:
+    if location.creator_id is not None:
+        if location.creator_id != current_user.id:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content={'status': 403, 'error': 'only world creator can delete the world'}
+                content={'status': 403, 'error': 'only location creator can delete the location'}
             )
     else:
         return JSONResponse(
             status_code=status.HTTP_424_FAILED_DEPENDENCY,
-            content={'status': 424, 'error': 'The world does not have a creator, so you can not delete it. Contact the support.'}
+            content={'status': 424, 'error': 'The location does not have a creator, so you can not delete it. Contact the support.'}
         )
 
     try:
-        await db.execute(delete(World).where(World.id == id))
+        await db.execute(delete(Location).where(Location.id == id))
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
