@@ -20,7 +20,7 @@ class World(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
 
     creator = relationship('User', lazy='joined')
-    location = relationship('Location', lazy='joined')
+    locations = relationship('Location', lazy='joined')
 
     def __repr__(self) -> str:
         return (

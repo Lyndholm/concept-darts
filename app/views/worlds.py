@@ -38,7 +38,7 @@ async def get_all_worlds(
         limit(limit).
         offset(offset)
     )
-    worlds = query.scalars().unique().all() # BUG: locations are always null
+    worlds = query.scalars().unique().all()
     return [WorldOut.from_orm(world) for world in worlds]
 
 
