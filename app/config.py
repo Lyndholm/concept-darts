@@ -9,7 +9,7 @@ class Config(BaseSettings):
     DB_NAME: str
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: str
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
 
 
 config = Config(_env_file= '.env', _env_file_encoding = 'utf-8')
