@@ -1,7 +1,7 @@
 """add files table
 
 Revision ID: e4261eb1c0ca
-Revises: 682d0566aab5
+Revises: 28282b974e8f
 Create Date: 2022-05-13 00:09:34.138182
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'e4261eb1c0ca'
-down_revision = '682d0566aab5'
+down_revision = '28282b974e8f'
 branch_labels = None
 depends_on = None
 

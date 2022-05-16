@@ -24,7 +24,7 @@ def upgrade():
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('cover_image', sa.String(), nullable=True),
     sa.Column('map_image', sa.String(), nullable=False),
-    sa.Column('creator_id', sa.Integer(), nullable=True),
+    sa.Column('creator_id', postgresql.UUID(as_uuid=True), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('NOW()'), nullable=False),
     sa.ForeignKeyConstraint(['creator_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
