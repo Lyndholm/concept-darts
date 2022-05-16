@@ -1,0 +1,14 @@
+[Unit]
+Description=it-designers-backend
+After=network.target
+
+[Service]
+User=www
+Group=www
+WorkingDirectory=/home/www/darts-prod/
+Environment="PATH=/home/www/darts-prod/.venv/bin"
+EnvironmentFile=/home/www/.env
+ExecStart=/home/www/darts-prod/.venv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+
+[Install]
+WantedBy=multi-user.target
