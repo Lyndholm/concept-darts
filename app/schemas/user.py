@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, validator
 
 
 class BaseUser(BaseModel):
+    username: str
     first_name: str
     last_name: str
     additional_name: str | None = None

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,8 +82,17 @@ async def login_user(
 ):
     """Login for access token"""
 
-    query = await db.execute(select(User).where(User.email == credentials.username))
-    user = query.scalars().first()
+    query = await db.execute(
+        select(User.id, User.password)
+        .where(
+            or_(
+                User.email == credentials.username,
+                User.username == credentials.username
+            )
+        )
+    )
+
+    user = query.first()
 
     if not user:
         return JSONResponse(
