@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..controllers import database, oauth2
 from ..models import User, World
-from ..schemas import ResponseError, WorldIn, WorldOut, WorldUpdate
+from ..schemas import (ResponseError, WorldCreated, WorldIn, WorldOut,
+                       WorldUpdate)
 
 router = APIRouter(
     prefix='/worlds',
@@ -72,7 +73,7 @@ async def get_world(
 
 @router.post(
     '/',
-    response_model=WorldOut,
+    response_model=WorldCreated,
     status_code=status.HTTP_201_CREATED,
     responses={
         401: {
@@ -100,7 +101,7 @@ async def create_world(
 
     try:
         await db.commit()
-        return WorldOut.from_orm(world)
+        return WorldCreated.from_orm(world)
     except Exception as e:
         await db.rollback()
         return JSONResponse(

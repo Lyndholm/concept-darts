@@ -13,19 +13,22 @@ class BaseWorld(BaseModel):
     map_image: str
     cover_image: str | None = None
 
+    class Config:
+        orm_mode = True
+
 
 class WorldIn(BaseWorld):
     ...
 
 
-class WorldOut(BaseWorld):
+class WorldCreated(BaseWorld):
     id: UUID
     created_at: datetime
     creator: UserOutPublic | None
-    locations: list[LocationOut] | None
 
-    class Config:
-        orm_mode = True
+
+class WorldOut(WorldCreated):
+    locations: list[LocationOut] | None
 
 
 class WorldUpdate(BaseModel):
