@@ -48,5 +48,14 @@ class UserOutPublic(UserOutBase):
     ...
 
 
-class UserOutPrivate(UserOutPublic, BaseUser):
+# Import here to avoid circular import
+from .world import WorldOwnedByUser
+from .location import LocationOwnedByUser
+
+class UserProfile(UserOutPublic):
+    worlds: list[WorldOwnedByUser] | None
+    locations: list[LocationOwnedByUser] | None
+
+
+class UserOutPrivate(UserProfile):
     email: EmailStr

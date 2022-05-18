@@ -29,3 +29,7 @@ class LocationUpdate(BaseModel):
     name: str | None
     description: str | None
     creator_id: UUID | None
+
+
+class LocationOwnedByUser(BaseLocation):
+    id: UUID
