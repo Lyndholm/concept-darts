@@ -19,6 +19,7 @@ class Location(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
 
     creator = relationship('User', lazy='joined')
+    images = relationship('LocationImage', lazy='joined')
 
     def __repr__(self) -> str:
         return (
@@ -34,20 +35,16 @@ class Location(Base):
 class LocationImage(Base):
     __tablename__ = 'locations_images'
 
-    location_id = Column(UUID(as_uuid=True), ForeignKey('locations.id', ondelete='SET NULL'), primary_key=True)
-    author_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'))
-    image = Column(String, nullable=False)
+    image = Column(String, ForeignKey('files.filename', ondelete='CASCADE'), primary_key=True)
     name = Column(String)
     description = Column(String)
-    uploaded_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
-
-    author = relationship('User', lazy='joined')
+    location_id = Column(UUID(as_uuid=True), ForeignKey('locations.id', ondelete='CASCADE'), primary_key=True)
 
     def __repr__(self) -> str:
         return (
             f'<{self.__class__.__name__}: '
             f'location_id={self.location_id!s} '
-            f'name={self.name}'
+            f'image={self.name}'
             f'>'
         )
 
