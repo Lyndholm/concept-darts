@@ -8,7 +8,6 @@ class BaseUser(BaseModel):
     username: str
     first_name: str
     last_name: str
-    additional_name: str | None = None
     date_of_birth: date
     avatar_image: str | None
 
@@ -45,7 +44,6 @@ class UserOutPrivate(UserOutPublic, BaseUser):
 class UserUpdate(UserWithPassword, BaseModel):
     first_name: str | None
     last_name: str | None
-    additional_name: str | None
     date_of_birth: date | None
     password: str | None
     avatar_image: str | None
