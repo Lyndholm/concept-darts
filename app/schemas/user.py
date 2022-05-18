@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, validator
@@ -8,8 +8,14 @@ class BaseUser(BaseModel):
     username: str
     first_name: str
     last_name: str
-    date_of_birth: date
     avatar_image: str | None
+
+    class Config:
+        orm_mode = True
+
+
+class BaseUserData(BaseUser):
+    date_of_birth: date
 
 
 class UserWithPassword(BaseModel):
@@ -22,28 +28,25 @@ class UserWithPassword(BaseModel):
         return value
 
 
-class UserIn(UserWithPassword, BaseUser):
-    email: EmailStr
-
-
-class UserOutPublic(BaseUser):
-    id: UUID
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
-
-
-class UserOutPrivate(UserOutPublic, BaseUser):
-    email: EmailStr
-
-    class Config:
-        orm_mode = True
-
-
-class UserUpdate(UserWithPassword, BaseModel):
+class UserUpdate(UserWithPassword):
     first_name: str | None
     last_name: str | None
     date_of_birth: date | None
     password: str | None
     avatar_image: str | None
+
+
+class UserIn(UserWithPassword, BaseUserData):
+    email: EmailStr
+
+
+class UserOutBase(BaseUser):
+    id: UUID
+
+
+class UserOutPublic(UserOutBase):
+    ...
+
+
+class UserOutPrivate(UserOutPublic, BaseUser):
+    email: EmailStr

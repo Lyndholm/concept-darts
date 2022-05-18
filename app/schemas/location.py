@@ -11,6 +11,9 @@ class BaseLocation(BaseModel):
     description: str | None = None
     world_id: UUID
 
+    class Config:
+        orm_mode = True
+
 
 class LocationIn(BaseLocation):
     ...
@@ -20,9 +23,6 @@ class LocationOut(BaseLocation):
     id: UUID
     created_at: datetime
     creator: UserOutPublic | None
-
-    class Config:
-        orm_mode = True
 
 
 class LocationUpdate(BaseModel):

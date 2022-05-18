@@ -3,8 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from .location import LocationOut
-from .user import UserOutPublic
+from app import schemas
 
 
 class BaseWorld(BaseModel):
@@ -24,11 +23,11 @@ class WorldIn(BaseWorld):
 class WorldCreated(BaseWorld):
     id: UUID
     created_at: datetime
-    creator: UserOutPublic | None
+    creator: schemas.UserOutPublic | None
 
 
 class WorldOut(WorldCreated):
-    locations: list[LocationOut] | None
+    locations: list[schemas.LocationOut] | None
 
 
 class WorldUpdate(BaseModel):
