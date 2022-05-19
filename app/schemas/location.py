@@ -6,6 +6,15 @@ from pydantic import BaseModel
 from .user import UserOutPublic
 
 
+class LocationImage(BaseModel):
+    image: str
+    name: str | None
+    description: str | None
+
+    class Config:
+        orm_mode = True
+
+
 class BaseLocation(BaseModel):
     name: str
     description: str | None = None
@@ -19,10 +28,14 @@ class LocationIn(BaseLocation):
     ...
 
 
-class LocationOut(BaseLocation):
+class LocationCreated(BaseLocation):
     id: UUID
     created_at: datetime
     creator: UserOutPublic | None
+
+
+class LocationOut(LocationCreated):
+    images: list[LocationImage]
 
 
 class LocationUpdate(BaseModel):

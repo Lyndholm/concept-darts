@@ -2,12 +2,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import and_, delete, or_, select, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import models, schemas
+from app.models.location import LocationImage
 from ..controllers import database, oauth2
-from ..models import User, Location, World
-from ..schemas import ResponseError, LocationIn, LocationOut, LocationUpdate
 
 router = APIRouter(
     prefix='/locations',
@@ -17,7 +19,7 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[LocationOut]
+    response_model=list[schemas.LocationOut]
 )
 async def get_all_locations(
     db: AsyncSession = Depends(database.get_session),
@@ -29,25 +31,25 @@ async def get_all_locations(
 
     search = search if search else ''
     query = await db.execute(
-        select(Location).
+        select(models.Location).
         where(or_(
-            Location.name.contains(search),
-            Location.description.contains(search)
+            models.Location.name.contains(search),
+            models.Location.description.contains(search)
             )
         ).
         limit(limit).
         offset(offset)
     )
-    locations = query.scalars().all()
-    return [LocationOut.from_orm(location) for location in locations]
+    locations = query.scalars().unique().all()
+    return [schemas.LocationOut.from_orm(location) for location in locations]
 
 
 @router.get(
     '/{id}',
-    response_model=LocationOut,
+    response_model=schemas.LocationOut,
     responses={
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The location was not found'
         },
     }
@@ -58,7 +60,7 @@ async def get_location(
 ):
     """Returns the location with the specified id"""
 
-    query = await db.execute(select(Location).where(Location.id == id))
+    query = await db.execute(select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -67,36 +69,36 @@ async def get_location(
             content={'status': 404, 'error': f'location with id={id!s} was not found'}
         )
 
-    return LocationOut.from_orm(location)
+    return schemas.LocationOut.from_orm(location)
 
 
 @router.post(
     '/',
-    response_model=LocationOut,
+    response_model=schemas.LocationCreated,
     status_code=status.HTTP_201_CREATED,
     responses={
         401: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Unauthorized'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'World as a foreign key was not found'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def create_location(
-    body: LocationIn,
+    body: schemas.LocationIn,
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Creates a new location"""
 
-    query = await db.execute(select(World).where(World.id == body.world_id))
+    query = await db.execute(select(models.World).where(models.World.id == body.world_id))
     world = query.scalars().first()
 
     if not world:
@@ -108,12 +110,12 @@ async def create_location(
     body = body.dict()
     body.update({'creator_id': current_user.id})
 
-    location = Location(**body)
+    location = models.Location(**body)
     db.add(location)
 
     try:
         await db.commit()
-        return LocationOut.from_orm(location)
+        return schemas.LocationCreated.from_orm(location)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -127,41 +129,41 @@ async def create_location(
 
 @router.patch(
     '/{id}',
-    response_model=LocationOut,
+    response_model=schemas.LocationOut,
     responses={
         400: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Some of the body data is invalid'
         },
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Forbidden to update one (or more) of the provided fields'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The location was not found'
         },
         424: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The location does not have a creator, action can not be done'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def update_location(
     id: UUID,
-    body: LocationUpdate,
+    body: schemas.LocationUpdate,
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Updates the location data with the specified id"""
 
     # TODO: Make the function simple, there are many lines in it
 
-    query = await db.execute(select(Location).where(Location.id == id))
+    query = await db.execute(select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -184,7 +186,7 @@ async def update_location(
 
     try:
         if body.creator_id is not None:
-            query = await db.execute(select(User).where(User.id == body.creator_id))
+            query = await db.execute(select(models.User).where(models.User.id == body.creator_id))
             user = query.scalars().first()
 
             if not user:
@@ -193,14 +195,14 @@ async def update_location(
                     content={'status': 400, 'error': f'user with id={body.creator_id!s} does not exist'}
                 )
 
-        statement = update(Location).where(Location.id == id).values(**body.dict(exclude_unset=True)).returning(Location)
-        query = select(Location).from_statement(statement).execution_options(populate_existing=True)
+        statement = update(models.Location).where(models.Location.id == id).values(**body.dict(exclude_unset=True)).returning(models.Location)
+        query = select(models.Location).from_statement(statement).execution_options(populate_existing=True)
         data = await db.execute(query)
         await db.commit()
 
         updated_location = data.scalars().first()
         
-        return LocationOut.from_orm(updated_location)
+        return schemas.LocationOut.from_orm(updated_location)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -217,19 +219,19 @@ async def update_location(
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Insufficient permissions to perform the action'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The location was not found'
         },
         424: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The location does not have a creator, action can not be done'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
@@ -237,11 +239,11 @@ async def update_location(
 async def delete_location(
     id: UUID, 
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Deletes the location with the specified id"""
 
-    query = await db.execute(select(Location).where(Location.id == id))
+    query = await db.execute(select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -263,7 +265,7 @@ async def delete_location(
         )
 
     try:
-        await db.execute(delete(Location).where(Location.id == id))
+        await db.execute(delete(models.Location).where(models.Location.id == id))
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -276,3 +278,124 @@ async def delete_location(
                 'error': f'something went wrong: {e}'
             }
         )
+
+
+@router.get(
+    '/{id}/images',
+    response_model=list[schemas.LocationImage]
+)
+async def get_location_images(
+    id: UUID,
+    db: AsyncSession = Depends(database.get_session)
+):
+    """Returns a list of images for a specific location"""
+
+    query = await db.execute(select(models.LocationImage).where(models.LocationImage.location_id == id))
+    images = query.scalars().all()
+
+    return [schemas.LocationImage.from_orm(img) for img in images]
+
+
+@router.post(
+    '/{id}/images',
+    response_model=schemas.LocationImage,
+    responses={
+        400: {
+            'model': schemas.ResponseError,
+            'description': 'Invalid data'
+        },
+        500: {
+            'model': schemas.ResponseError,
+            'description': 'Internal server error'
+        },
+    }
+)
+async def add_location_image(
+    id: UUID,
+    image: schemas.LocationImage,
+    db: AsyncSession = Depends(database.get_session),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    """Adds an image to a specific location"""
+
+    data = image.dict()
+    data.update({'location_id': id})
+
+    insert_stmt = insert(LocationImage).values(**data)
+    query = insert_stmt.on_conflict_do_nothing(index_elements=['image', 'location_id'])
+
+    try:
+        await db.execute(query)
+        await db.commit()
+    except IntegrityError:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                'status': 400,
+                'error': 'invalid image or location id'
+            }
+        )
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
+
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.delete(
+    '/{id}/images',
+    responses={
+        400: {
+            'model': schemas.ResponseError,
+            'description': 'Invalid data'
+        },
+        500: {
+            'model': schemas.ResponseError,
+            'description': 'Internal server error'
+        },
+    }
+)
+async def delete_location_image(
+    id: UUID,
+    image: str,
+    db: AsyncSession = Depends(database.get_session),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    """Deletes an image from a location"""
+
+    try:
+        await db.execute(
+            delete(models.LocationImage)
+            .where(
+                and_(
+                    models.LocationImage.image == image,
+                    models.LocationImage.location_id == id
+                ) 
+            )
+        )
+        await db.commit()
+    except IntegrityError:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                'status': 400,
+                'error': 'invalid image or location id'
+            }
+        )
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
