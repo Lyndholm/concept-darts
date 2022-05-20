@@ -1,18 +1,25 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
+from ..config import config
 from .user import UserOutPublic
 
 
-class LocationImage(BaseModel):
+class LocationImageIn(BaseModel):
     image: str
-    name: str | None
-    description: str | None
+    name: str | None = None
+    description: str | None = None
 
     class Config:
         orm_mode = True
+
+
+class LocationImageOut(LocationImageIn):
+    @validator('image')
+    def format_image_url(cls, value) -> str:
+        return config.STATIC_STORAGE_BASE_URL + value if config.STATIC_STORAGE_BASE_URL not in value else value
 
 
 class BaseLocation(BaseModel):
@@ -25,7 +32,7 @@ class BaseLocation(BaseModel):
 
 
 class LocationIn(BaseLocation):
-    ...
+    images: list[LocationImageIn] | None = []
 
 
 class LocationCreated(BaseLocation):
@@ -35,7 +42,7 @@ class LocationCreated(BaseLocation):
 
 
 class LocationOut(LocationCreated):
-    images: list[LocationImage]
+    images: list[LocationImageOut]
 
 
 class LocationUpdate(BaseModel):

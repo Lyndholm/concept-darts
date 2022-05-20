@@ -10,6 +10,7 @@ class Config(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
+    STATIC_STORAGE_BASE_URL: str
 
 
 config = Config(_env_file= '.env', _env_file_encoding = 'utf-8')

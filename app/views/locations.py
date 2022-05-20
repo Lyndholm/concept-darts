@@ -282,7 +282,7 @@ async def delete_location(
 
 @router.get(
     '/{id}/images',
-    response_model=list[schemas.LocationImage]
+    response_model=list[schemas.LocationImageOut]
 )
 async def get_location_images(
     id: UUID,
@@ -293,12 +293,11 @@ async def get_location_images(
     query = await db.execute(select(models.LocationImage).where(models.LocationImage.location_id == id))
     images = query.scalars().all()
 
-    return [schemas.LocationImage.from_orm(img) for img in images]
+    return [schemas.LocationImageOut.from_orm(img) for img in images]
 
 
 @router.post(
     '/{id}/images',
-    response_model=schemas.LocationImage,
     responses={
         400: {
             'model': schemas.ResponseError,
@@ -312,7 +311,7 @@ async def get_location_images(
 )
 async def add_location_image(
     id: UUID,
-    image: schemas.LocationImage,
+    image: schemas.LocationImageIn,
     db: AsyncSession = Depends(database.get_session),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
