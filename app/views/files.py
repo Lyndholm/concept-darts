@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..controllers import database, oauth2
 from ..models import File as FileModel
 from ..models import User
-from ..schemas import FileOut, ResponseError
+from ..schemas import FileOut, FileOutWithStorageUrl, ResponseError
 
 router = APIRouter(
     prefix='/files',
@@ -19,7 +19,7 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[FileOut]
+    response_model=list[FileOutWithStorageUrl]
 )
 async def get_all_files(
     db: AsyncSession = Depends(database.get_session),
@@ -34,7 +34,7 @@ async def get_all_files(
         offset(offset)
     )
     files = query.scalars().all()
-    return [FileOut.from_orm(file) for file in files]
+    return [FileOutWithStorageUrl.from_orm(file) for file in files]
 
 
 @router.post(

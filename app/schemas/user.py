@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, validator
 
+from ..config import config
+
 
 class BaseUser(BaseModel):
     username: str
@@ -42,6 +44,10 @@ class UserIn(UserWithPassword, BaseUserData):
 
 class UserOutBase(BaseUser):
     id: UUID
+
+    @validator('avatar_image')
+    def format_image_url(cls, value) -> str:
+        return config.STATIC_STORAGE_BASE_URL + value if config.STATIC_STORAGE_BASE_URL not in value else value
 
 
 class UserOutPublic(UserOutBase):
