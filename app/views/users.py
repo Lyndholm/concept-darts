@@ -66,6 +66,7 @@ async def get_all_users(
         where(or_(
             User.first_name.contains(search),
             User.last_name.contains(search),
+            User.additional_name.contains(search),
             User.username.contains(search)
             )
         ).

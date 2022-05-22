@@ -10,6 +10,7 @@ class BaseUser(BaseModel):
     username: str
     first_name: str
     last_name: str
+    additional_name: str | None = None
     avatar_image: str | None
 
     class Config:
@@ -33,6 +34,7 @@ class UserWithPassword(BaseModel):
 class UserUpdate(UserWithPassword):
     first_name: str | None
     last_name: str | None
+    additional_name: str | None
     date_of_birth: date | None
     password: str | None
     avatar_image: str | None
