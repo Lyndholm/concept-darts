@@ -115,7 +115,7 @@ async def create_world(
 
 @router.patch(
     '/{id}',
-    response_model=WorldOut,
+    response_model=WorldCreated,
     responses={
         400: {
             'model': ResponseError,
@@ -188,7 +188,7 @@ async def update_world(
 
         updated_world = data.scalars().first()
         
-        return WorldOut.from_orm(updated_world)
+        return WorldCreated.from_orm(updated_world)
     except Exception as e:
         await db.rollback()
         return JSONResponse(

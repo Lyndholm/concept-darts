@@ -135,7 +135,7 @@ async def create_location(
 
 @router.patch(
     '/{id}',
-    response_model=schemas.LocationOut,
+    response_model=schemas.LocationCreated,
     responses={
         400: {
             'model': schemas.ResponseError,
@@ -208,7 +208,7 @@ async def update_location(
 
         updated_location = data.scalars().first()
         
-        return schemas.LocationOut.from_orm(updated_location)
+        return schemas.LocationCreated.from_orm(updated_location)
     except Exception as e:
         await db.rollback()
         return JSONResponse(

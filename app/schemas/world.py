@@ -48,3 +48,9 @@ class WorldUpdate(BaseModel):
 
 class WorldOwnedByUser(BaseWorld):
     id: UUID
+
+    @validator('map_image', 'cover_image')
+    def format_image_url(cls, value) -> str:
+        if value is None:
+            return value
+        return config.STATIC_STORAGE_BASE_URL + value if config.STATIC_STORAGE_BASE_URL not in value else value

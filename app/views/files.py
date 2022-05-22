@@ -33,7 +33,7 @@ async def get_all_files(
         limit(limit).
         offset(offset)
     )
-    files = query.scalars().all()
+    files = query.scalars().unique().all()
     return [FileOutWithStorageUrl.from_orm(file) for file in files]
 
 

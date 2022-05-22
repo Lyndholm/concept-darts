@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy import DATE, TIMESTAMP, Column, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 
 from ..controllers.database import Base
@@ -20,6 +21,9 @@ class User(Base):
     password = Column(String, nullable=False)
     avatar_image = Column(String)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
+
+    worlds = relationship('World', lazy='joined', primaryjoin='User.id==World.creator_id', viewonly=True)
+    locations = relationship('Location', lazy='joined', primaryjoin='User.id==Location.creator_id', viewonly=True)
 
     def __repr__(self) -> str:
         return (

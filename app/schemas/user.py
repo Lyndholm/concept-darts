@@ -61,9 +61,13 @@ from .world import WorldOwnedByUser
 from .location import LocationOwnedByUser
 
 class UserProfile(UserOutPublic):
-    worlds: list[WorldOwnedByUser] | None
-    locations: list[LocationOwnedByUser] | None
+    worlds: list[WorldOwnedByUser] = []
+    locations: list[LocationOwnedByUser] = []
 
 
 class UserOutPrivate(UserProfile):
+    email: EmailStr
+
+
+class UserUpdatedOut(UserOutPublic):
     email: EmailStr
