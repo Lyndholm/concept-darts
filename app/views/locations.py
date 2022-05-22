@@ -2,13 +2,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, or_, select, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import and_, delete, or_, select, update, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import models, schemas
-from app.models.location import LocationImage
+from app import models, schemas, controllers
 from ..controllers import database, oauth2
 
 router = APIRouter(
@@ -109,13 +107,16 @@ async def create_location(
 
     body = body.dict()
     body.update({'creator_id': current_user.id})
+    images = body.pop('images')
 
-    location = models.Location(**body)
-    db.add(location)
+    insert_stmt = insert(models.Location).values(**body).returning(models.Location)
+    query = select(models.Location).from_statement(insert_stmt).execution_options(populate_existing=True)
 
     try:
+        data = await db.execute(query)
         await db.commit()
-        return schemas.LocationCreated.from_orm(location)
+        location = data.scalars().first()
+
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -125,6 +126,11 @@ async def create_location(
                 'error': f'something went wrong: {e}'
             }
         )
+
+    for image in images:
+        await controllers.add_location_image_to_db(db, location.id, image)
+
+    return schemas.LocationCreated.from_orm(location)
 
 
 @router.patch(
@@ -317,34 +323,7 @@ async def add_location_image(
 ):
     """Adds an image to a specific location"""
 
-    data = image.dict()
-    data.update({'location_id': id})
-
-    insert_stmt = insert(LocationImage).values(**data)
-    query = insert_stmt.on_conflict_do_nothing(index_elements=['image', 'location_id'])
-
-    try:
-        await db.execute(query)
-        await db.commit()
-    except IntegrityError:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                'status': 400,
-                'error': 'invalid image or location id'
-            }
-        )
-    except Exception as e:
-        await db.rollback()
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                'status': 500,
-                'error': f'something went wrong: {e}'
-            }
-        )
-
-    return Response(status_code=status.HTTP_201_CREATED)
+    return await controllers.add_location_image_to_db(db, id, image)
 
 
 @router.delete(

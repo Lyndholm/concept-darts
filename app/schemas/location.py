@@ -32,16 +32,16 @@ class BaseLocation(BaseModel):
 
 
 class LocationIn(BaseLocation):
-    images: list[LocationImageIn] | None = []
+    images: list[LocationImageIn] = []
 
 
 class LocationCreated(BaseLocation):
     id: UUID
     created_at: datetime
-    creator: UserOutPublic | None
 
 
 class LocationOut(LocationCreated):
+    creator: UserOutPublic | None
     images: list[LocationImageOut]
 
 
