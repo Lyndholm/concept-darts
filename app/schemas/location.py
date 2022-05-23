@@ -26,6 +26,8 @@ class BaseLocation(BaseModel):
     name: str
     description: str | None = None
     world_id: UUID
+    coord_x: float
+    coord_y: float
 
     class Config:
         orm_mode = True

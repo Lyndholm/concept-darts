@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, String
+from sqlalchemy import TIMESTAMP, Column, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
@@ -17,6 +17,8 @@ class Location(Base):
     world_id = Column(UUID(as_uuid=True), ForeignKey('worlds.id', ondelete='CASCADE'))
     creator_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'))
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
+    coord_x = Column(Float(precision=8), nullable=False)
+    coord_y = Column(Float(precision=8), nullable=False)
 
     creator = relationship('User', lazy='joined')
     images = relationship('LocationImage', lazy='joined')
