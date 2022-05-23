@@ -10,7 +10,7 @@ class BaseUser(BaseModel):
     username: str
     first_name: str
     last_name: str
-    additional_name: str | None = None
+    additional_name: str | None
     avatar_image: str | None
 
     class Config:
@@ -18,7 +18,16 @@ class BaseUser(BaseModel):
 
 
 class BaseUserData(BaseUser):
-    date_of_birth: date
+    date_of_birth: date | None
+    phone_number: str | None
+
+    @validator('phone_number')
+    def validate_phone_number(cls, value):
+        if value is None:
+            return value
+        if len(value) > 15:
+            raise ValueError('phone number should not exceed 15 digits')
+        return value
 
 
 class UserWithPassword(BaseModel):
@@ -49,7 +58,13 @@ class UserOutBase(BaseUser):
 
     @validator('avatar_image')
     def format_image_url(cls, value) -> str:
+        if value is None:
+            return value
         return config.STATIC_STORAGE_BASE_URL + value if config.STATIC_STORAGE_BASE_URL not in value else value
+
+
+class UserCreated(UserOutBase, BaseUserData):
+    ...
 
 
 class UserOutPublic(UserOutBase):

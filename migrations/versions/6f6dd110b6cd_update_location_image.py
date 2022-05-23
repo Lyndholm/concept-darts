@@ -1,7 +1,7 @@
 """update location image
 
 Revision ID: 6f6dd110b6cd
-Revises: 5f2d8fcb98fa
+Revises: 64a78d63529c
 Create Date: 2022-05-18 23:56:18.548540
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '6f6dd110b6cd'
-down_revision = '5f2d8fcb98fa'
+down_revision = '64a78d63529c'
 branch_labels = None
 depends_on = None
 
