@@ -7,10 +7,10 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import models
-from ..config import config
-from ..schemas import TokenData
-from .database import get_session
+from app import models, schemas
+from app.config import config
+from app.controllers import database
+
 
 SECRET_KEY = config.JWT_SECRET_KEY
 ALGORITHM = config.JWT_ALGORITHM
@@ -30,7 +30,10 @@ def create_access_token(data: dict) -> str:
     return encoded_jwt
 
 
-def verify_access_token(token: str, credentials_exception: HTTPException) -> TokenData | None:
+def verify_access_token(
+    token: str,
+    credentials_exception: HTTPException
+) -> schemas.TokenData | None:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
@@ -39,14 +42,17 @@ def verify_access_token(token: str, credentials_exception: HTTPException) -> Tok
         if user_id is None:
             raise credentials_exception
 
-        token_data = TokenData(id=user_id)
+        token_data = schemas.TokenData(id=user_id)
     except JWTError:
         raise credentials_exception
 
     return token_data
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_session)):
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(database.get_session)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail='invalid credentials',

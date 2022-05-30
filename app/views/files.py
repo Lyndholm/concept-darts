@@ -1,15 +1,13 @@
 import uuid
 
 import aiofiles
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..controllers import database, oauth2
-from ..models import File as FileModel
-from ..models import User
-from ..schemas import FileOut, FileOutWithStorageUrl, ResponseError
+from app import models, schemas
+from app.controllers import database, oauth2
 
 router = APIRouter(
     prefix='/files',
@@ -19,7 +17,7 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[FileOutWithStorageUrl]
+    response_model=list[schemas.FileOutWithStorageUrl]
 )
 async def get_all_files(
     db: AsyncSession = Depends(database.get_session),
@@ -29,32 +27,32 @@ async def get_all_files(
     """Returns a list of all files"""
 
     query = await db.execute(
-        select(FileModel).
+        sa.select(models.File).
         limit(limit).
         offset(offset)
     )
     files = query.scalars().unique().all()
-    return [FileOutWithStorageUrl.from_orm(file) for file in files]
+    return [schemas.FileOutWithStorageUrl.from_orm(file) for file in files]
 
 
 @router.post(
     '/upload',
-    response_model=FileOut,
+    response_model=schemas.FileOut,
     status_code=status.HTTP_201_CREATED,
     responses={
         400: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Bad request. Unsupported file extension.'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def upload_file(
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user),   
+    current_user: models.User = Depends(oauth2.get_current_user),   
     file: UploadFile = File(...)
 ):
     """Uploads file to the server"""
@@ -82,10 +80,10 @@ async def upload_file(
             'author_id': current_user.id
         }
 
-        image = FileModel(**image_data)
+        image = models.File(**image_data)
         db.add(image)
         await db.commit()
-        return FileOut.from_orm(image)
+        return schemas.FileOut.from_orm(image)
 
     except Exception as e:
         await db.rollback()

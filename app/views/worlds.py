@@ -1,14 +1,13 @@
 from uuid import UUID
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..controllers import database, oauth2
-from ..models import User, World
-from ..schemas import (ResponseError, WorldCreated, WorldIn, WorldOut,
-                       WorldUpdate)
+from app import models, schemas
+from app.controllers import database, oauth2
+
 
 router = APIRouter(
     prefix='/worlds',
@@ -18,7 +17,7 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[WorldOut]
+    response_model=list[schemas.WorldOut]
 )
 async def get_all_worlds(
     db: AsyncSession = Depends(database.get_session),
@@ -30,25 +29,25 @@ async def get_all_worlds(
 
     search = search if search else ''
     query = await db.execute(
-        select(World).
-        where(or_(
-            World.name.contains(search),
-            World.description.contains(search)
+        sa.select(models.World)
+        .where(sa.or_(
+            models.World.name.contains(search),
+            models.World.description.contains(search)
             )
-        ).
-        limit(limit).
-        offset(offset)
+        )
+        .limit(limit)
+        .offset(offset)
     )
     worlds = query.scalars().unique().all()
-    return [WorldOut.from_orm(world) for world in worlds]
+    return [schemas.WorldOut.from_orm(world) for world in worlds]
 
 
 @router.get(
     '/{id}',
-    response_model=WorldOut,
+    response_model=schemas.WorldOut,
     responses={
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The world was not found'
         },
     }
@@ -59,7 +58,7 @@ async def get_world(
 ):
     """Returns the world with the specified id"""
 
-    query = await db.execute(select(World).where(World.id == id))
+    query = await db.execute(sa.select(models.World).where(models.World.id == id))
     world = query.scalars().first()
 
     if not world:
@@ -68,40 +67,40 @@ async def get_world(
             content={'status': 404, 'error': f'world with id={id!s} was not found'}
         )
 
-    return WorldOut.from_orm(world)
+    return schemas.WorldOut.from_orm(world)
 
 
 @router.post(
     '/',
-    response_model=WorldCreated,
+    response_model=schemas.WorldCreated,
     status_code=status.HTTP_201_CREATED,
     responses={
         401: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Unauthorized'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def create_world(
-    body: WorldIn,
+    body: schemas.WorldIn,
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Creates a new world"""
 
     body = body.dict()
     body.update({'creator_id': current_user.id})
 
-    world = World(**body)
+    world = models.World(**body)
     db.add(world)
 
     try:
         await db.commit()
-        return WorldCreated.from_orm(world)
+        return schemas.WorldCreated.from_orm(world)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -115,41 +114,41 @@ async def create_world(
 
 @router.patch(
     '/{id}',
-    response_model=WorldCreated,
+    response_model=schemas.WorldCreated,
     responses={
         400: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Some of the body data is invalid'
         },
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Forbidden to update one (or more) of the provided fields'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The world was not found'
         },
         424: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The world does not have a creator, action can not be done'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def update_world(
     id: UUID,
-    body: WorldUpdate,
+    body: schemas.WorldUpdate,
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Updates the world data with the specified id"""
 
     # TODO: Make the function simple, there are many lines in it
 
-    query = await db.execute(select(World).where(World.id == id))
+    query = await db.execute(sa.select(models.World).where(models.World.id == id))
     world = query.scalars().first()
 
     if not world:
@@ -172,7 +171,7 @@ async def update_world(
 
     try:
         if body.creator_id is not None:
-            query = await db.execute(select(User).where(User.id == body.creator_id))
+            query = await db.execute(sa.select(models.User).where(models.User.id == body.creator_id))
             user = query.scalars().first()
 
             if not user:
@@ -181,14 +180,23 @@ async def update_world(
                     content={'status': 400, 'error': f'user with id={body.creator_id!s} does not exist'}
                 )
 
-        statement = update(World).where(World.id == id).values(**body.dict(exclude_unset=True)).returning(World)
-        query = select(World).from_statement(statement).execution_options(populate_existing=True)
+        statement = (
+            sa.update(models.World)
+            .where(models.World.id == id)
+            .values(**body.dict(exclude_unset=True))
+            .returning(models.World)
+        )
+        query = (
+            sa.select(models.World)
+            .from_statement(statement)
+            .execution_options(populate_existing=True)
+        )
         data = await db.execute(query)
         await db.commit()
 
         updated_world = data.scalars().first()
         
-        return WorldCreated.from_orm(updated_world)
+        return schemas.WorldCreated.from_orm(updated_world)
     except Exception as e:
         await db.rollback()
         return JSONResponse(
@@ -205,19 +213,19 @@ async def update_world(
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Insufficient permissions to perform the action'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The world was not found'
         },
         424: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The world does not have a creator, action can not be done'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
@@ -225,11 +233,11 @@ async def update_world(
 async def delete_world(
     id: UUID, 
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Deletes the world with the specified id"""
 
-    query = await db.execute(select(World).where(World.id == id))
+    query = await db.execute(sa.select(models.World).where(models.World.id == id))
     world = query.scalars().first()
 
     if not world:
@@ -251,7 +259,7 @@ async def delete_world(
         )
 
     try:
-        await db.execute(delete(World).where(World.id == id))
+        await db.execute(sa.delete(models.World).where(models.World.id == id))
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)

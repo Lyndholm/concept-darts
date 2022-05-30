@@ -1,24 +1,24 @@
 import uuid
 
-from sqlalchemy import TIMESTAMP, Column, Float, ForeignKey, String
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 
-from ..controllers.database import Base
+from app.controllers.database import Base
 
 
 class Location(Base):
     __tablename__ = 'locations'
 
-    id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    description = Column(String)
-    world_id = Column(UUID(as_uuid=True), ForeignKey('worlds.id', ondelete='CASCADE'))
-    creator_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'))
-    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
-    coord_x = Column(Float(precision=8), nullable=False)
-    coord_y = Column(Float(precision=8), nullable=False)
+    id = sa.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+    name = sa.Column(sa.String, nullable=False)
+    description = sa.Column(sa.String)
+    world_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('worlds.id', ondelete='CASCADE'))
+    creator_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'))
+    created_at = sa.Column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
+    coord_x = sa.Column(sa.Float(precision=8), nullable=False)
+    coord_y = sa.Column(sa.Float(precision=8), nullable=False)
 
     creator = relationship('User', lazy='joined')
     images = relationship('LocationImage', lazy='joined')
@@ -37,10 +37,10 @@ class Location(Base):
 class LocationImage(Base):
     __tablename__ = 'locations_images'
 
-    image = Column(String, ForeignKey('files.filename', ondelete='CASCADE'), primary_key=True)
-    name = Column(String)
-    description = Column(String)
-    location_id = Column(UUID(as_uuid=True), ForeignKey('locations.id', ondelete='CASCADE'), primary_key=True)
+    image = sa.Column(sa.String, sa.ForeignKey('files.filename', ondelete='CASCADE'), primary_key=True)
+    name = sa.Column(sa.String)
+    description = sa.Column(sa.String)
+    location_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('locations.id', ondelete='CASCADE'), primary_key=True)
 
     def __repr__(self) -> str:
         return (

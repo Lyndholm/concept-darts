@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 from fastapi import Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
@@ -24,7 +24,7 @@ async def add_location_image_to_db(
 
     data.update({'location_id': location_id})
 
-    insert_stmt = insert(models.LocationImage).values(**data)
+    insert_stmt = psql_insert(models.LocationImage).values(**data)
     query = insert_stmt.on_conflict_do_nothing(index_elements=['image', 'location_id'])
 
     try:

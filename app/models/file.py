@@ -1,17 +1,17 @@
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, String
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
 
-from ..controllers.database import Base
+from app.controllers.database import Base
 
 
 class File(Base):
     __tablename__ = 'files'
 
-    filename = Column(String, primary_key=True, nullable=False)
-    author_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'))
-    uploaded_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
+    filename = sa.Column(sa.String, primary_key=True, nullable=False)
+    author_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'))
+    uploaded_at = sa.Column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
 
     author = relationship('User', lazy='joined')
 

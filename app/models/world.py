@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, String
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import text
@@ -11,13 +11,13 @@ from ..controllers.database import Base
 class World(Base):
     __tablename__ = 'worlds'
 
-    id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    description = Column(String)
-    cover_image = Column(String)
-    map_image = Column(String, nullable=False)
-    creator_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'))
-    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
+    id = sa.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+    name = sa.Column(sa.String, nullable=False)
+    description = sa.Column(sa.String)
+    cover_image = sa.Column(sa.String)
+    map_image = sa.Column(sa.String, nullable=False)
+    creator_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'))
+    created_at = sa.Column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=text('NOW()'))
 
     creator = relationship('User', lazy='joined')
     locations = relationship('Location', lazy='joined')

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, validator
 
-from ..config import config
+from app.config import config
 
 
 class BaseFile(BaseModel):

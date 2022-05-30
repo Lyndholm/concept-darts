@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import views
+from app import views
 
 
 app = FastAPI(title='ITForDesigners')

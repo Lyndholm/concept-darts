@@ -1,14 +1,13 @@
+import sqlalchemy as sa
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
-from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..controllers import database, oauth2
-from ..models import User
-from ..schemas import ResponseError, Token, UserCreated, UserIn
-from ..utils import get_password_hash, verify_password
+from app import models, schemas, utils
+from app.controllers import database, oauth2
 
 router = APIRouter(
     prefix='/auth',
@@ -18,34 +17,34 @@ router = APIRouter(
 
 @router.post(
     '/register',
-    response_model=UserCreated,
+    response_model=schemas.UserCreated,
     status_code=status.HTTP_201_CREATED,
     responses={
         409: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'A user with provided credentials is already registred'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def create_user(
-    body: UserIn,
+    body: schemas.UserIn,
     db: AsyncSession = Depends(database.get_session)
 ):
     """Creates a new user"""
 
-    hashed_password = get_password_hash(body.password)
+    hashed_password = utils.get_password_hash(body.password)
     body.password = hashed_password
 
-    user = User(**body.dict())
+    user = models.User(**body.dict())
     db.add(user)
 
     try:
         await db.commit()
-        return UserCreated.from_orm(user)
+        return schemas.UserCreated.from_orm(user)
     except IntegrityError:
         await db.rollback()
         return JSONResponse(
@@ -68,10 +67,10 @@ async def create_user(
 
 @router.post(
     '/login',
-    response_model=Token,
+    response_model=schemas.Token,
     responses={
         401: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Invalid credentials'
         },
     }
@@ -83,11 +82,11 @@ async def login_user(
     """Login for access token"""
 
     query = await db.execute(
-        select(User.id, User.password)
+        sa.select(models.User.id, models.User.password)
         .where(
-            or_(
-                User.email == credentials.username,
-                User.username == credentials.username
+            sa.or_(
+                models.User.email == credentials.username,
+                models.User.username == credentials.username
             )
         )
     )
@@ -101,7 +100,7 @@ async def login_user(
             headers={'WWW-Authenticate': 'Bearer'}
         )
 
-    if not verify_password(credentials.password, user.password):
+    if not utils.verify_password(credentials.password, user.password):
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={'status': 401, 'error': 'invalid credentials'},
@@ -110,4 +109,4 @@ async def login_user(
 
     access_token = oauth2.create_access_token(data = {'user_id': str(user.id)})
 
-    return Token(access_token=access_token, token_type='bearer')
+    return schemas.Token(access_token=access_token, token_type='bearer')

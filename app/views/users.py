@@ -1,15 +1,13 @@
 from uuid import UUID
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..controllers import database, oauth2
-from ..models import User
-from ..schemas import (ResponseError, UserOutPrivate, UserOutPublic,
-                       UserUpdate, UserUpdatedOut)
-from ..utils import get_password_hash
+from app import models, schemas, utils
+from app.controllers import database, oauth2
+
 
 router = APIRouter(
     prefix='/users',
@@ -19,17 +17,17 @@ router = APIRouter(
 
 @router.get(
     '/me',
-    response_model=UserOutPrivate,
+    response_model=schemas.UserOutPrivate,
     responses={
         401: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Unauthorized'
         },
     }
 )
 async def get_mine_user(
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Returns the data of the authorized user"""
 
@@ -37,7 +35,7 @@ async def get_mine_user(
     # It may happen when user deletes their account
     # and then tries to request this endpoint
     try:
-        query = await db.execute(select(User).where(User.id == current_user.id))
+        query = await db.execute(sa.select(models.User).where(models.User.id == current_user.id))
         user = query.scalars().first()
     except AttributeError:
         return JSONResponse(
@@ -51,7 +49,7 @@ async def get_mine_user(
 
 @router.get(
     '/',
-    response_model=list[UserOutPublic]
+    response_model=list[schemas.UserOutPublic]
 )
 async def get_all_users(
     db: AsyncSession = Depends(database.get_session),
@@ -63,27 +61,27 @@ async def get_all_users(
 
     search = search if search else ''
     query = await db.execute(
-        select(User).
-        where(or_(
-            User.first_name.contains(search),
-            User.last_name.contains(search),
-            User.additional_name.contains(search),
-            User.username.contains(search)
+        sa.select(models.User).
+        where(sa.or_(
+            models.User.first_name.contains(search),
+            models.User.last_name.contains(search),
+            models.User.additional_name.contains(search),
+            models.User.username.contains(search)
             )
         ).
         limit(limit).
         offset(offset)
     )
     users = query.scalars().unique().all()
-    return [UserOutPublic.from_orm(user) for user in users]
+    return [schemas.UserOutPublic.from_orm(user) for user in users]
 
 
 @router.get(
     '/{id}',
-    response_model=UserOutPublic,
+    response_model=schemas.UserOutPublic,
     responses={
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The user was not found'
         },
     }
@@ -94,7 +92,7 @@ async def get_user(
 ):
     """Returns the user with the specified id"""
 
-    query = await db.execute(select(User).where(User.id == id))
+    query = await db.execute(sa.select(models.User).where(models.User.id == id))
     user = query.scalars().first()
 
     if not user:
@@ -103,36 +101,36 @@ async def get_user(
             content={'status': 404, 'error': f'user with id={id!s} was not found'}
         )
 
-    return UserOutPublic.from_orm(user)
+    return schemas.UserOutPublic.from_orm(user)
 
 
 @router.patch(
     '/{id}',
-    response_model=UserUpdatedOut,
+    response_model=schemas.UserUpdatedOut,
     responses={
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Forbidden to edit profile'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The user was not found'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
 )
 async def update_user(
     id: UUID,
-    body: UserUpdate,
+    body: schemas.UserUpdate,
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Updates the user data with the specified id"""
 
-    query = await db.execute(select(User).where(User.id == id))
+    query = await db.execute(sa.select(models.User).where(models.User.id == id))
 
     if not query.scalars().first():
         return JSONResponse(
@@ -148,17 +146,26 @@ async def update_user(
 
     try:
         if body.password is not None:
-            hashed_password = get_password_hash(body.password)
+            hashed_password = utils.get_password_hash(body.password)
             body.password = hashed_password
 
-        statement = update(User).where(User.id == id).values(**body.dict(exclude_unset=True)).returning(User)
-        query = select(User).from_statement(statement).execution_options(populate_existing=True)
+        statement = (
+            sa.update(models.User)
+            .where(models.User.id == id)
+            .values(**body.dict(exclude_unset=True))
+            .returning(models.User)
+        )
+        query = (
+            sa.select(models.User)
+            .from_statement(statement)
+            .execution_options(populate_existing=True)
+        )
         data = await db.execute(query)
         await db.commit()
 
         updated_user = data.scalars().first()
         
-        return UserUpdatedOut.from_orm(updated_user)
+        return schemas.UserUpdatedOut.from_orm(updated_user)
 
     except Exception as e:
         await db.rollback()
@@ -176,15 +183,15 @@ async def update_user(
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         403: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Forbidden to delete profile'
         },
         404: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'The user was not found'
         },
         500: {
-            'model': ResponseError,
+            'model': schemas.ResponseError,
             'description': 'Internal server error'
         },
     }
@@ -192,11 +199,11 @@ async def update_user(
 async def delete_user(
     id: UUID, 
     db: AsyncSession = Depends(database.get_session),
-    current_user: User = Depends(oauth2.get_current_user)
+    current_user: models.User = Depends(oauth2.get_current_user)
 ):
     """Deletes the user with the specified id"""
 
-    query = await db.execute(select(User).where(User.id == id))
+    query = await db.execute(sa.select(models.User).where(models.User.id == id))
 
     if not query.scalars().first():
         return JSONResponse(
@@ -211,7 +218,7 @@ async def delete_user(
         )
 
     try:
-        await db.execute(delete(User).where(User.id == id))
+        await db.execute(sa.delete(models.User).where(models.User.id == id))
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)

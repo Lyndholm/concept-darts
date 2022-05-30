@@ -1,13 +1,13 @@
 from uuid import UUID
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, or_, select, update, insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas, controllers
-from ..controllers import database, oauth2
+from app.controllers import database, oauth2
 
 router = APIRouter(
     prefix='/locations',
@@ -29,8 +29,8 @@ async def get_all_locations(
 
     search = search if search else ''
     query = await db.execute(
-        select(models.Location).
-        where(or_(
+        sa.select(models.Location).
+        where(sa.or_(
             models.Location.name.contains(search),
             models.Location.description.contains(search)
             )
@@ -58,7 +58,7 @@ async def get_location(
 ):
     """Returns the location with the specified id"""
 
-    query = await db.execute(select(models.Location).where(models.Location.id == id))
+    query = await db.execute(sa.select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -96,7 +96,7 @@ async def create_location(
 ):
     """Creates a new location"""
 
-    query = await db.execute(select(models.World).where(models.World.id == body.world_id))
+    query = await db.execute(sa.select(models.World).where(models.World.id == body.world_id))
     world = query.scalars().first()
 
     if not world:
@@ -109,8 +109,8 @@ async def create_location(
     body.update({'creator_id': current_user.id})
     images = body.pop('images')
 
-    insert_stmt = insert(models.Location).values(**body).returning(models.Location)
-    query = select(models.Location).from_statement(insert_stmt).execution_options(populate_existing=True)
+    insert_stmt = sa.insert(models.Location).values(**body).returning(models.Location)
+    query = sa.select(models.Location).from_statement(insert_stmt).execution_options(populate_existing=True)
 
     try:
         data = await db.execute(query)
@@ -169,7 +169,7 @@ async def update_location(
 
     # TODO: Make the function simple, there are many lines in it
 
-    query = await db.execute(select(models.Location).where(models.Location.id == id))
+    query = await db.execute(sa.select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -192,7 +192,7 @@ async def update_location(
 
     try:
         if body.creator_id is not None:
-            query = await db.execute(select(models.User).where(models.User.id == body.creator_id))
+            query = await db.execute(sa.select(models.User).where(models.User.id == body.creator_id))
             user = query.scalars().first()
 
             if not user:
@@ -201,8 +201,17 @@ async def update_location(
                     content={'status': 400, 'error': f'user with id={body.creator_id!s} does not exist'}
                 )
 
-        statement = update(models.Location).where(models.Location.id == id).values(**body.dict(exclude_unset=True)).returning(models.Location)
-        query = select(models.Location).from_statement(statement).execution_options(populate_existing=True)
+        statement = (
+            sa.update(models.Location)
+            .where(models.Location.id == id)
+            .values(**body.dict(exclude_unset=True))
+            .returning(models.Location)
+        )
+        query = (
+            sa.select(models.Location)
+            .from_statement(statement)
+            .execution_options(populate_existing=True)
+        )
         data = await db.execute(query)
         await db.commit()
 
@@ -249,7 +258,7 @@ async def delete_location(
 ):
     """Deletes the location with the specified id"""
 
-    query = await db.execute(select(models.Location).where(models.Location.id == id))
+    query = await db.execute(sa.select(models.Location).where(models.Location.id == id))
     location = query.scalars().first()
 
     if not location:
@@ -271,7 +280,7 @@ async def delete_location(
         )
 
     try:
-        await db.execute(delete(models.Location).where(models.Location.id == id))
+        await db.execute(sa.delete(models.Location).where(models.Location.id == id))
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -296,7 +305,7 @@ async def get_location_images(
 ):
     """Returns a list of images for a specific location"""
 
-    query = await db.execute(select(models.LocationImage).where(models.LocationImage.location_id == id))
+    query = await db.execute(sa.select(models.LocationImage).where(models.LocationImage.location_id == id))
     images = query.scalars().all()
 
     return [schemas.LocationImageOut.from_orm(img) for img in images]
@@ -349,9 +358,9 @@ async def delete_location_image(
 
     try:
         await db.execute(
-            delete(models.LocationImage)
+            sa.delete(models.LocationImage)
             .where(
-                and_(
+                sa.and_(
                     models.LocationImage.image == image,
                     models.LocationImage.location_id == id
                 ) 
