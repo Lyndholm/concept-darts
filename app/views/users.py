@@ -105,17 +105,9 @@ async def get_user(
 
 
 @router.patch(
-    '/{id}',
+    '/me',
     response_model=schemas.UserUpdatedOut,
     responses={
-        403: {
-            'model': schemas.ResponseError,
-            'description': 'Forbidden to edit profile'
-        },
-        404: {
-            'model': schemas.ResponseError,
-            'description': 'The user was not found'
-        },
         500: {
             'model': schemas.ResponseError,
             'description': 'Internal server error'
@@ -123,26 +115,11 @@ async def get_user(
     }
 )
 async def update_user(
-    id: UUID,
     body: schemas.UserUpdate,
     db: AsyncSession = Depends(database.get_session),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    """Updates the user data with the specified id"""
-
-    query = await db.execute(sa.select(models.User).where(models.User.id == id))
-
-    if not query.scalars().first():
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={'status': 404, 'error': f'user with id={id!s} was not found'}
-        )
-
-    if id != current_user.id:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={'status': 403, 'error': 'you can edit only your profile'}
-        )
+    """Updates the account of an authorized user"""
 
     try:
         if body.password is not None:
@@ -151,7 +128,7 @@ async def update_user(
 
         statement = (
             sa.update(models.User)
-            .where(models.User.id == id)
+            .where(models.User.id == current_user.id)
             .values(**body.dict(exclude_unset=True))
             .returning(models.User)
         )
