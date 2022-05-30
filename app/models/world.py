@@ -31,3 +31,18 @@ class World(Base):
         )
 
     __mapper_args__ = {'eager_defaults': True}
+
+
+class FavouriteWorld(Base):
+    __tablename__ = 'favourite_worlds'
+
+    world_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('worlds.id', ondelete='CASCADE'), primary_key=True)
+    user_id = sa.Column(UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+
+    def __repr__(self) -> str:
+        return (
+            f'<{self.__class__.__name__}: '
+            f'world_id={self.world_id!s} '
+            f'user_id={self.user_id!s}'
+            f'>'
+        )

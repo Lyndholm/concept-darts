@@ -3,6 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
@@ -260,6 +261,103 @@ async def delete_world(
 
     try:
         await db.execute(sa.delete(models.World).where(models.World.id == id))
+        await db.commit()
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
+
+
+@router.post(
+    '/{id}/favourite',
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {
+            'model': schemas.ResponseError,
+            'description': 'Invalid data'
+        },
+        401: {
+            'model': schemas.ResponseError,
+            'description': 'Unauthorized'
+        },
+        500: {
+            'model': schemas.ResponseError,
+            'description': 'Internal server error'
+        },
+    }
+)
+async def favourite_world(
+    id: UUID,
+    db: AsyncSession = Depends(database.get_session),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    """Adds a world to favorites"""
+
+    insert_stmt = psql_insert(models.FavouriteWorld).values(world_id=id, user_id=current_user.id)
+    query = insert_stmt.on_conflict_do_nothing(index_elements=['world_id', 'user_id'])
+
+    try:
+        await db.execute(query)
+        await db.commit()
+
+        return Response(status_code=status.HTTP_201_CREATED)
+    except sa.exc.IntegrityError:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                'status': 400,
+                'error': 'invalid world id'
+            }
+        )
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'status': 500,
+                'error': f'something went wrong: {e}'
+            }
+        )
+
+
+@router.delete(
+    '/{id}/favourite',
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {
+            'model': schemas.ResponseError,
+            'description': 'Unauthorized'
+        },
+        500: {
+            'model': schemas.ResponseError,
+            'description': 'Internal server error'
+        },
+    }
+)
+async def unfavourite_world(
+    id: UUID, 
+    db: AsyncSession = Depends(database.get_session),
+    current_user: models.User = Depends(oauth2.get_current_user)
+):
+    """Deletes a world from favourites"""
+
+    try:
+        await db.execute(
+            sa.delete(models.FavouriteWorld)
+            .where(
+                sa.and_(
+                models.FavouriteWorld.world_id == id,
+                models.FavouriteWorld.user_id == current_user.id
+                )
+            )
+        )
         await db.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
