@@ -1,9 +1,10 @@
+import os
 import uuid
 
 import aiofiles
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, File, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
@@ -94,3 +95,27 @@ async def upload_file(
                 'error': f'something went wrong: {e}'
             }
         )
+
+
+@router.get(
+    '/{filename}',
+    response_class=FileResponse,
+    responses={
+        404: {
+            'model': schemas.ResponseError,
+            'description': 'File not found.'
+        }
+    }
+)
+async def get_single_file(
+    filename: str
+):
+    """Returns a file"""
+
+    if not os.path.exists(f'static/{filename}'):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={'status': 404, 'error': f'file {filename} was not found'}
+        )
+
+    return FileResponse(f'static/{filename}')
